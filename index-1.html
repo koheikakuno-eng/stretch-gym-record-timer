@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ストレッチ・筋トレ・ジム記録タイマー</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --card: #ffffff;
+      --text: #1f2933;
+      --muted: #667085;
+      --line: #e5e7eb;
+      --accent: #111827;
+      --done: #e7f6ec;
+      --soft: #eef0f2;
+      --warn: #fff4df;
+      --stretch: #ffe9e9;
+      --ok: #e7f6ec;
+      --input: #fbfbfa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    h1 { font-size: 24px; margin: 8px 0 6px; }
+    .sub { color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .tab {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 8px;
+      background: #fff;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+      margin-bottom: 16px;
+    }
+    .menuTitle { font-size: 18px; font-weight: 850; margin-bottom: 4px; }
+    .menuDesc { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+    .step { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+    .exercise { font-size: 27px; font-weight: 850; margin-bottom: 8px; line-height: 1.25; }
+    .note { color: var(--muted); line-height: 1.65; margin-bottom: 12px; }
+    .chips { display: grid; gap: 8px; margin: 12px 0 0; }
+    .chip {
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.45;
+      border: 1px solid var(--line);
+    }
+    .chip strong { margin-right: 4px; }
+    .chip.stretch { background: var(--stretch); }
+    .chip.ok { background: var(--ok); }
+    .chip.warn { background: var(--warn); }
+    .timer {
+      font-variant-numeric: tabular-nums;
+      font-size: 70px;
+      font-weight: 850;
+      text-align: center;
+      margin: 18px 0;
+      letter-spacing: 0.03em;
+    }
+    .bar {
+      height: 12px;
+      background: #edf0f2;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0 18px;
+    }
+    .bar > div {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.2s linear;
+    }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 15px 12px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .primary { background: var(--accent); color: white; }
+    .secondary { background: var(--soft); color: var(--text); }
+    .wide { grid-column: 1 / -1; }
+    .smallBtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .smallBtns button { padding: 11px 10px; font-size: 14px; }
+    .tip { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 12px; }
+    .list { display: grid; gap: 8px; margin-top: 12px; }
+    .item {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .item.current { border-color: #111827; box-shadow: inset 0 0 0 1px #111827; }
+    .item.done { background: var(--done); color: #285c3a; }
+    .check {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #9aa4b2;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .item.done .check { border-color: #2f855a; }
+    .dur { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .logInputs {
+      display: none;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 14px 0 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--input);
+    }
+    .logInputs.show { display: grid; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 15px;
+    }
+    .field.memo { grid-column: 1 / -1; }
+    .field textarea { min-height: 48px; resize: vertical; }
+    .recordBox {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    textarea#exportText {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.55;
+      background: #fbfbfa;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+    .recordBtns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .recordBtns button { padding: 12px 10px; font-size: 14px; }
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+    .quick {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .quick button {
+      padding: 11px 10px;
+      font-size: 14px;
+    }
+    @media (max-width: 760px) {
+      body { padding: 14px; }
+      .tabs { grid-template-columns: 1fr 1fr; }
+      .timer { font-size: 60px; }
+      .buttons { grid-template-columns: 1fr; }
+      .wide { grid-column: auto; }
+      .exercise { font-size: 24px; }
+      .logInputs { grid-template-columns: 1fr 1fr; }
+      .field.memo { grid-column: 1 / -1; }
+      .recordBtns { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ストレッチ・筋トレ・ジム記録タイマー</h1>
+    <div class="sub">終了したら「完了チェック → 次へ」。実施内容は下の記録欄に出るので、コピーしてチャッピーに貼れます。</div>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div class="card">
+      <div class="menuTitle" id="menuTitle"></div>
+      <div class="menuDesc" id="menuDesc"></div>
+
+      <div class="step" id="stepText"></div>
+      <div class="exercise" id="exerciseName"></div>
+      <div class="note" id="exerciseNote"></div>
+
+      <div class="chips">
+        <div class="chip stretch" id="targetText"></div>
+        <div class="chip ok" id="formText"></div>
+        <div class="chip warn" id="avoidText"></div>
+      </div>
+
+      <div class="logInputs" id="logInputs">
+        <div class="field">
+          <label for="weightInput">重量 kg</label>
+          <input id="weightInput" inputmode="decimal" placeholder="例 70" />
+        </div>
+        <div class="field">
+          <label for="repsInput">回数</label>
+          <input id="repsInput" inputmode="numeric" placeholder="例 12" />
+        </div>
+        <div class="field">
+          <label for="setsInput">セット</label>
+          <input id="setsInput" inputmode="numeric" placeholder="例 2" />
+        </div>
+        <div class="field">
+          <label for="effortInput">余裕度</label>
+          <select id="effortInput">
+            <option value="">選択なし</option>
+            <option value="余裕あり">余裕あり</option>
+            <option value="ちょうど良い">ちょうど良い</option>
+            <option value="きつい">きつい</option>
+            <option value="痛みあり">痛みあり</option>
+          </select>
+        </div>
+        <div class="field memo">
+          <label for="memoInput">メモ</label>
+          <textarea id="memoInput" placeholder="例：フォーム安定、右膝に違和感、次回+2.5kgなど"></textarea>
+        </div>
+      </div>
+
+      <div class="timer" id="timerText">00:30</div>
+      <div class="bar"><div id="progress"></div></div>
+
+      <div class="buttons">
+        <button class="primary" id="startPauseBtn">開始</button>
+        <button class="secondary" id="resetBtn">この種目をリセット</button>
+        <button class="primary wide" id="doneNextBtn">完了チェック → 次へ</button>
+      </div>
+
+      <div class="smallBtns">
+        <button class="secondary" id="prevBtn">前へ</button>
+        <button class="secondary" id="restartMenuBtn">このメニューを最初から</button>
+      </div>
+
+      <div class="quick" id="gymQuickButtons">
+        <button class="secondary" id="halfGymBtn">今日は軽め：有酸素＋3種目だけ</button>
+        <button class="secondary" id="fullGymBtn">通常ジムメニューに戻す</button>
+      </div>
+
+      <div class="tip" id="tipText"></div>
+    </div>
+
+    <div class="card">
+      <strong>今日のメニュー</strong>
+      <div class="list" id="list"></div>
+    </div>
+
+    <div class="card">
+      <strong>チャッピーに貼る用の記録</strong>
+      <div class="recordBox">
+        <textarea id="exportText" readonly></textarea>
+        <div class="recordBtns">
+          <button class="primary" id="copyBtn">記録をコピー</button>
+          <button class="secondary" id="refreshRecordBtn">記録を更新</button>
+          <button class="secondary" id="clearRecordBtn">今日の記録を消す</button>
+        </div>
+        <div class="status" id="copyStatus"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const guide = {
+  stretch: {
+    target: "目的：可動域・回復",
+    form: "痛気持ちいい範囲で、反動をつけずに行う。",
+    avoid: "痛みが出る角度まで伸ばさない。"
+  },
+  mobility: {
+    target: "目的：朝の可動域出し",
+    form: "軽く動かして、詰まりを取る程度で十分。",
+    avoid: "朝は長く強く伸ばしすぎない。"
+  },
+  strength: {
+    target: "目的：減量・体幹・ゴルフの安定感",
+    form: "フォーム優先。回数より姿勢を崩さないこと。",
+    avoid: "痛みがある種目は飛ばす。"
+  },
+  gym: {
+    target: "目的：筋力維持・体脂肪減・ゴルフの土台作り",
+    form: "筋肉痛を残しすぎない強度。最後2〜3回が少しきつい程度。",
+    avoid: "反動で上げない。関節痛が出たら重量を下げる。"
+  },
+  cardio: {
+    target: "目的：脂肪燃焼・回復促進",
+    form: "息が上がりすぎない範囲。会話できる強度でOK。",
+    avoid: "脚が重い日は傾斜や速度を下げる。"
+  }
+};
+
+const baseMenus = {
+  morningStretch: {
+    label: "朝ストレッチ",
+    title: "朝3〜5分ストレッチ",
+    desc: "朝向けの短縮版。伸ばし切るより、体を起こして可動域を出すメニュー。",
+    tip: "朝は伸ばしすぎない。軽く動かして詰まりを取るくらいで十分。",
+    exercises: [
+      { name: "肩まわし", sec: 30, guide: "mobility", note: "肩を前後に大きく回す。" },
+      { name: "肩甲骨寄せ・開き", sec: 45, guide: "mobility", note: "背中を丸める→肩甲骨を寄せる。" },
+      { name: "体側伸ばし：右", sec: 20, guide: "mobility", note: "右手を上げて軽く伸ばす。" },
+      { name: "体側伸ばし：左", sec: 20, guide: "mobility", note: "左手を上げて軽く伸ばす。" },
+      { name: "股関節前側：右脚後ろ", sec: 25, guide: "mobility", note: "右脚を後ろにして股関節前を伸ばす。" },
+      { name: "股関節前側：左脚後ろ", sec: 25, guide: "mobility", note: "左脚を後ろにして股関節前を伸ばす。" },
+      { name: "お尻ストレッチ：右", sec: 25, guide: "mobility", note: "右足首を左膝に乗せる。" },
+      { name: "お尻ストレッチ：左", sec: 25, guide: "mobility", note: "左足首を右膝に乗せる。" },
+      { name: "胸椎回旋：右", sec: 30, guide: "mobility", note: "右側へ背中を開く。" },
+      { name: "胸椎回旋：左", sec: 30, guide: "mobility", note: "左側へ背中を開く。" }
+    ]
+  },
+  nightStretch: {
+    label: "夜ストレッチ",
+    title: "夜10分ストレッチ",
+    desc: "風呂上がり向け。回復・柔軟性・ゴルフの回転を狙うメニュー。",
+    tip: "夜は「いた気持ちいい」で30〜45秒。反動をつけず、呼吸を止めない。",
+    exercises: [
+      { name: "肩まわし", sec: 30, guide: "stretch", note: "肩を大きく前後に回す。" },
+      { name: "肩甲骨寄せ・開き", sec: 60, guide: "stretch", note: "背中を丸める→胸を開くを繰り返す。" },
+      { name: "胸を開く：右", sec: 30, guide: "stretch", note: "壁に右手を置き、胸を左側へ開く。" },
+      { name: "胸を開く：左", sec: 30, guide: "stretch", note: "壁に左手を置き、胸を右側へ開く。" },
+      { name: "体側伸ばし：右", sec: 30, guide: "stretch", note: "右手を上げて右脇腹を伸ばす。" },
+      { name: "体側伸ばし：左", sec: 30, guide: "stretch", note: "左手を上げて左脇腹を伸ばす。" },
+      { name: "股関節前側：右脚後ろ", sec: 45, guide: "stretch", note: "右脚を後ろにして片膝立ち。" },
+      { name: "股関節前側：左脚後ろ", sec: 45, guide: "stretch", note: "左脚を後ろにして片膝立ち。" },
+      { name: "お尻ストレッチ：右", sec: 45, guide: "stretch", note: "右足首を左膝に乗せて前傾。" },
+      { name: "お尻ストレッチ：左", sec: 45, guide: "stretch", note: "左足首を右膝に乗せて前傾。" },
+      { name: "もも裏・ふくらはぎ：右", sec: 45, guide: "stretch", note: "右脚を前に出してつま先を上げる。" },
+      { name: "もも裏・ふくらはぎ：左", sec: 45, guide: "stretch", note: "左脚を前に出してつま先を上げる。" },
+      { name: "四つ這い背中ほぐし", sec: 60, guide: "stretch", note: "背中を丸める→反らす。" },
+      { name: "胸椎回旋：右", sec: 45, guide: "stretch", note: "右肘を天井に向ける。" },
+      { name: "胸椎回旋：左", sec: 45, guide: "stretch", note: "左肘を天井に向ける。" }
+    ]
+  },
+  homeStrength: {
+    label: "自宅筋トレ",
+    title: "自宅筋トレ 8〜10分",
+    desc: "減量・体幹・ゴルフの安定感向け。筋肉痛の日は半分で終了してOK。",
+    tip: "フォーム優先。痛みがある種目は飛ばす。ゴルフ前日は追い込まない。",
+    exercises: [
+      { name: "準備：肩・股関節を回す", sec: 45, guide: "strength", note: "肩回し、股関節回しを軽く。" },
+      { name: "スクワット 30回", sec: 75, guide: "strength", note: "椅子に座るようにしゃがむ。" },
+      { name: "プランク 60秒", sec: 60, guide: "strength", note: "体を一直線に保つ。" },
+      { name: "腕立て 10回", sec: 60, guide: "strength", note: "膝つきでもOK。" },
+      { name: "ヒップリフト 15回", sec: 60, guide: "strength", note: "仰向けでお尻を上げる。" },
+      { name: "バードドッグ 左右10回", sec: 75, guide: "strength", note: "対角の手足を伸ばす。" },
+      { name: "サイドプランク：右 30秒", sec: 30, guide: "strength", note: "右側を下にして体を支える。" },
+      { name: "サイドプランク：左 30秒", sec: 30, guide: "strength", note: "左側を下にして体を支える。" },
+      { name: "仕上げ：胸椎回旋", sec: 60, guide: "stretch", note: "左右5回ずつ背中を開く。" }
+    ]
+  },
+  gym: {
+    label: "ジム",
+    title: "ジムメニュー 45〜60分",
+    desc: "これまでの負荷に合わせた、筋肉痛を残しすぎない全身メニュー。重量・回数を入力すると記録に反映されます。",
+    tip: "迷ったら前回と同じ重量で、最後2〜3回だけ少しきつい強度。体調が重い日は有酸素＋3種目で十分。",
+    exercises: [
+      { name: "ウォームアップ：有酸素 5〜10分", sec: 300, guide: "cardio", note: "ウォーキングまたはバイク。軽く汗ばむ程度。", log: true, defaultWeight: "", defaultReps: "5〜10分", defaultSets: "1" },
+      { name: "レッグプレス", sec: 90, guide: "gym", note: "目安：70〜80kg、12〜20回、1〜2セット。膝とつま先を同じ方向へ。", log: true, defaultWeight: "70〜80", defaultReps: "12〜20", defaultSets: "1〜2" },
+      { name: "チェストプレス", sec: 90, guide: "gym", note: "目安：20〜27.5kg、8〜15回、1〜2セット。肩をすくめない。", log: true, defaultWeight: "20〜27.5", defaultReps: "8〜15", defaultSets: "1〜2" },
+      { name: "ラットプルダウン", sec: 90, guide: "gym", note: "目安：33〜47kg、8〜12回、1〜2セット。肘を下げる意識。", log: true, defaultWeight: "33〜47", defaultReps: "8〜12", defaultSets: "1〜2" },
+      { name: "レッグエクステンション", sec: 75, guide: "gym", note: "目安：20〜26kg、10〜15回、1〜2セット。膝に痛みが出ない範囲。", log: true, defaultWeight: "20〜26", defaultReps: "10〜15", defaultSets: "1〜2" },
+      { name: "ヒップアブダクション", sec: 75, guide: "gym", note: "目安：54〜61kg、12〜20回、1〜2セット。反動を使わない。", log: true, defaultWeight: "54〜61", defaultReps: "12〜20", defaultSets: "1〜2" },
+      { name: "ショルダープレス", sec: 75, guide: "gym", note: "目安：20kg前後、8〜12回、1セット。肩が重ければ軽め。", log: true, defaultWeight: "20", defaultReps: "8〜12", defaultSets: "1" },
+      { name: "アブドミナル", sec: 75, guide: "gym", note: "目安：20〜25kg、10〜15回、1〜2セット。首で引かず腹筋で丸める。", log: true, defaultWeight: "20〜25", defaultReps: "10〜15", defaultSets: "1〜2" },
+      { name: "有酸素：ウォーキング 20〜30分", sec: 1200, guide: "cardio", note: "目安：6.0〜6.5km/h、傾斜2〜4度。疲れていたら傾斜なし。", log: true, defaultWeight: "6.0〜6.5km/h", defaultReps: "20〜30分", defaultSets: "1" },
+      { name: "クールダウン：股関節・胸椎", sec: 180, guide: "stretch", note: "股関節前、お尻、胸椎回旋を軽く。", log: true, defaultWeight: "", defaultReps: "3分", defaultSets: "1" }
+    ]
+  }
+};
+
+const lightGymExercises = [
+  { name: "ウォームアップ：有酸素 5〜10分", sec: 300, guide: "cardio", note: "ウォーキングまたはバイク。軽く汗ばむ程度。", log: true, defaultWeight: "", defaultReps: "5〜10分", defaultSets: "1" },
+  { name: "レッグプレス", sec: 90, guide: "gym", note: "軽め。70kg前後でフォーム確認。", log: true, defaultWeight: "70", defaultReps: "12〜15", defaultSets: "1" },
+  { name: "チェストプレス", sec: 90, guide: "gym", note: "軽め。20kg前後でフォーム確認。", log: true, defaultWeight: "20", defaultReps: "10〜12", defaultSets: "1" },
+  { name: "ラットプルダウン", sec: 90, guide: "gym", note: "軽め。33〜40kgでフォーム確認。", log: true, defaultWeight: "33〜40", defaultReps: "10〜12", defaultSets: "1" },
+  { name: "有酸素：ウォーキング 20分", sec: 1200, guide: "cardio", note: "会話できる強度。脚が重ければ傾斜なし。", log: true, defaultWeight: "6.0km/h", defaultReps: "20分", defaultSets: "1" },
+  { name: "クールダウン：股関節・胸椎", sec: 180, guide: "stretch", note: "股関節前、お尻、胸椎回旋を軽く。", log: true, defaultWeight: "", defaultReps: "3分", defaultSets: "1" }
+];
+
+let menus = JSON.parse(JSON.stringify(baseMenus));
+let menuKey = "morningStretch";
+let index = 0;
+let remaining = menus[menuKey].exercises[0].sec;
+let running = false;
+let interval = null;
+let done = Array(menus[menuKey].exercises.length).fill(false);
+let sessionLogs = [];
+
+const tabs = document.getElementById("tabs");
+const menuTitle = document.getElementById("menuTitle");
+const menuDesc = document.getElementById("menuDesc");
+const stepText = document.getElementById("stepText");
+const exerciseName = document.getElementById("exerciseName");
+const exerciseNote = document.getElementById("exerciseNote");
+const timerText = document.getElementById("timerText");
+const progress = document.getElementById("progress");
+const startPauseBtn = document.getElementById("startPauseBtn");
+const resetBtn = document.getElementById("resetBtn");
+const doneNextBtn = document.getElementById("doneNextBtn");
+const prevBtn = document.getElementById("prevBtn");
+const restartMenuBtn = document.getElementById("restartMenuBtn");
+const list = document.getElementById("list");
+const tipText = document.getElementById("tipText");
+const targetText = document.getElementById("targetText");
+const formText = document.getElementById("formText");
+const avoidText = document.getElementById("avoidText");
+const logInputs = document.getElementById("logInputs");
+const weightInput = document.getElementById("weightInput");
+const repsInput = document.getElementById("repsInput");
+const setsInput = document.getElementById("setsInput");
+const effortInput = document.getElementById("effortInput");
+const memoInput = document.getElementById("memoInput");
+const exportText = document.getElementById("exportText");
+const copyBtn = document.getElementById("copyBtn");
+const refreshRecordBtn = document.getElementById("refreshRecordBtn");
+const clearRecordBtn = document.getElementById("clearRecordBtn");
+const copyStatus = document.getElementById("copyStatus");
+const gymQuickButtons = document.getElementById("gymQuickButtons");
+const halfGymBtn = document.getElementById("halfGymBtn");
+const fullGymBtn = document.getElementById("fullGymBtn");
+
+function currentMenu() { return menus[menuKey]; }
+function exercises() { return currentMenu().exercises; }
+
+function fmt(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function nowText() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${y}/${mo}/${da} ${h}:${mi}`;
+}
+
+function renderTabs() {
+  tabs.innerHTML = "";
+  Object.entries(menus).forEach(([key, menu]) => {
+    const btn = document.createElement("button");
+    btn.className = "tab" + (key === menuKey ? " active" : "");
+    btn.textContent = menu.label;
+    btn.addEventListener("click", () => switchMenu(key));
+    tabs.appendChild(btn);
+  });
+}
+
+function renderList() {
+  list.innerHTML = "";
+  exercises().forEach((ex, i) => {
+    const div = document.createElement("div");
+    div.className = "item" + (done[i] ? " done" : "") + (i === index ? " current" : "");
+    div.innerHTML = `
+      <div class="check">${done[i] ? "✓" : ""}</div>
+      <div>${i + 1}. ${ex.name}</div>
+      <div class="dur">${fmt(ex.sec)}</div>
+    `;
+    div.addEventListener("click", () => {
+      index = i;
+      remaining = exercises()[index].sec;
+      stopTimer();
+      render();
+    });
+    list.appendChild(div);
+  });
+}
+
+function fillLogInputs(ex) {
+  if (!ex.log) {
+    logInputs.classList.remove("show");
+    return;
+  }
+  logInputs.classList.add("show");
+  weightInput.value = ex.defaultWeight || "";
+  repsInput.value = ex.defaultReps || "";
+  setsInput.value = ex.defaultSets || "";
+  effortInput.value = "";
+  memoInput.value = "";
+}
+
+function render() {
+  const menu = currentMenu();
+  const exs = exercises();
+  const ex = exs[index];
+  const g = guide[ex.guide] || guide.stretch;
+
+  renderTabs();
+  menuTitle.textContent = menu.title;
+  menuDesc.textContent = menu.desc;
+  stepText.textContent = `Step ${index + 1} / ${exs.length}`;
+  exerciseName.textContent = ex.name;
+  exerciseNote.textContent = ex.note;
+
+  targetText.innerHTML = `<strong>${g.target.split("：")[0]}：</strong>${g.target.split("：").slice(1).join("：")}`;
+  formText.innerHTML = `<strong>やり方：</strong>${g.form}`;
+  avoidText.innerHTML = `<strong>注意：</strong>${g.avoid.replace(/^注意：/, "")}`;
+
+  timerText.textContent = fmt(remaining);
+  const pct = ((ex.sec - remaining) / ex.sec) * 100;
+  progress.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+
+  startPauseBtn.textContent = running ? "一時停止" : "開始";
+  doneNextBtn.textContent = index === exs.length - 1 ? "完了チェック → 終了" : "完了チェック → 次へ";
+  tipText.textContent = menu.tip;
+  gymQuickButtons.style.display = menuKey === "gym" ? "grid" : "none";
+
+  fillLogInputs(ex);
+  renderList();
+  updateExportText();
+}
+
+function startTimer() {
+  if (running) return;
+  running = true;
+  interval = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      remaining = 0;
+      stopTimer();
+      beep();
+    }
+    renderTimerOnly();
+  }, 1000);
+  renderTimerOnly();
+}
+
+function renderTimerOnly() {
+  const ex = exercises()[index];
+  timerText.textContent = fmt(remaining);
+  const pct = ((ex.sec - remaining) / ex.sec) * 100;
+  progress.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  startPauseBtn.textContent = running ? "一時停止" : "開始";
+}
+
+function stopTimer() {
+  running = false;
+  if (interval) clearInterval(interval);
+  interval = null;
+  renderTimerOnly();
+}
+
+function resetCurrent() {
+  stopTimer();
+  remaining = exercises()[index].sec;
+  renderTimerOnly();
+}
+
+function recordCurrent() {
+  const ex = exercises()[index];
+  const existingIdx = sessionLogs.findIndex(x => x.menuKey === menuKey && x.stepIndex === index);
+  const entry = {
+    time: nowText(),
+    menuKey,
+    menuLabel: currentMenu().label,
+    stepIndex: index,
+    name: ex.name,
+    duration: fmt(ex.sec),
+    weight: ex.log ? weightInput.value.trim() : "",
+    reps: ex.log ? repsInput.value.trim() : "",
+    sets: ex.log ? setsInput.value.trim() : "",
+    effort: ex.log ? effortInput.value : "",
+    memo: ex.log ? memoInput.value.trim() : ""
+  };
+  if (existingIdx >= 0) {
+    sessionLogs[existingIdx] = entry;
+  } else {
+    sessionLogs.push(entry);
+  }
+  updateExportText();
+}
+
+function nextExercise() {
+  const exs = exercises();
+  done[index] = true;
+  recordCurrent();
+
+  if (index < exs.length - 1) {
+    index += 1;
+    remaining = exs[index].sec;
+    stopTimer();
+    render();
+    startTimer();
+  } else {
+    stopTimer();
+    remaining = 0;
+    render();
+    alert("このメニューは完了です。下の記録をコピーしてチャッピーに貼れます。");
+  }
+}
+
+function prevExercise() {
+  if (index > 0) {
+    stopTimer();
+    index -= 1;
+    remaining = exercises()[index].sec;
+    render();
+  }
+}
+
+function restartMenu() {
+  stopTimer();
+  index = 0;
+  done = Array(exercises().length).fill(false);
+  remaining = exercises()[0].sec;
+  render();
+}
+
+function switchMenu(key) {
+  stopTimer();
+  menuKey = key;
+  index = 0;
+  done = Array(exercises().length).fill(false);
+  remaining = exercises()[0].sec;
+  render();
+}
+
+function setLightGym() {
+  menus.gym.exercises = JSON.parse(JSON.stringify(lightGymExercises));
+  if (menuKey !== "gym") menuKey = "gym";
+  restartMenu();
+}
+
+function setFullGym() {
+  menus.gym.exercises = JSON.parse(JSON.stringify(baseMenus.gym.exercises));
+  if (menuKey !== "gym") menuKey = "gym";
+  restartMenu();
+}
+
+function updateExportText() {
+  const byMenu = {};
+  sessionLogs.forEach(log => {
+    if (!byMenu[log.menuLabel]) byMenu[log.menuLabel] = [];
+    byMenu[log.menuLabel].push(log);
+  });
+
+  const lines = [];
+  lines.push(`今日の運動記録：${nowText()}`);
+  lines.push("");
+
+  if (sessionLogs.length === 0) {
+    lines.push("まだ完了チェックされた種目はありません。");
+  } else {
+    Object.entries(byMenu).forEach(([menuLabel, logs]) => {
+      lines.push(`【${menuLabel}】`);
+      logs
+        .sort((a, b) => a.stepIndex - b.stepIndex)
+        .forEach(log => {
+          let detail = `- ${log.name}`;
+          const parts = [];
+          if (log.weight) parts.push(`重量/速度 ${log.weight}`);
+          if (log.reps) parts.push(`回数/時間 ${log.reps}`);
+          if (log.sets) parts.push(`${log.sets}セット`);
+          if (log.effort) parts.push(log.effort);
+          if (parts.length) detail += `：${parts.join("、")}`;
+          if (log.memo) detail += `。メモ：${log.memo}`;
+          lines.push(detail);
+        });
+      lines.push("");
+    });
+  }
+
+  lines.push("コメント：");
+  lines.push("食事・体調・ゴルフ予定に合わせて、次回の調整をお願いします。");
+  exportText.value = lines.join("\n");
+}
+
+async function copyRecord() {
+  updateExportText();
+  try {
+    await navigator.clipboard.writeText(exportText.value);
+    copyStatus.textContent = "コピーしました。このままチャッピーに貼れます。";
+  } catch (e) {
+    exportText.focus();
+    exportText.select();
+    document.execCommand("copy");
+    copyStatus.textContent = "コピーを試行しました。できない場合は記録欄を長押しして手動コピーしてください。";
+  }
+}
+
+function clearRecord() {
+  if (!confirm("今日の記録を消しますか？")) return;
+  sessionLogs = [];
+  done = Array(exercises().length).fill(false);
+  updateExportText();
+  renderList();
+  copyStatus.textContent = "記録を消しました。";
+}
+
+function beep() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.value = 0.08;
+    osc.start();
+    setTimeout(() => {
+      osc.stop();
+      ctx.close();
+    }, 180);
+  } catch (e) {}
+}
+
+startPauseBtn.addEventListener("click", () => running ? stopTimer() : startTimer());
+resetBtn.addEventListener("click", resetCurrent);
+doneNextBtn.addEventListener("click", nextExercise);
+prevBtn.addEventListener("click", prevExercise);
+restartMenuBtn.addEventListener("click", restartMenu);
+copyBtn.addEventListener("click", copyRecord);
+refreshRecordBtn.addEventListener("click", () => {
+  updateExportText();
+  copyStatus.textContent = "記録を更新しました。";
+});
+clearRecordBtn.addEventListener("click", clearRecord);
+halfGymBtn.addEventListener("click", setLightGym);
+fullGymBtn.addEventListener("click", setFullGym);
+
+render();
+</script>
+</body>
+</html>
