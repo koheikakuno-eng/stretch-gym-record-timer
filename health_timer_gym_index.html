@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>運動記録・ストレッチタイマー</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #64748b;
+      --line: #dbe3ee;
+      --main: #2563eb;
+      --main-dark: #1d4ed8;
+      --soft: #eaf1ff;
+      --soft2: #f8fafc;
+      --danger: #dc2626;
+      --ok: #16a34a;
+      --warn: #b45309;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(245, 247, 251, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .wrap { width: min(1060px, 100%); margin: 0 auto; padding: 16px; }
+    h1 { font-size: 22px; margin: 0 0 10px; letter-spacing: 0.02em; }
+    h2 { font-size: 18px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 0 0 8px; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .tab {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 8px;
+      background: #fff;
+      color: var(--text);
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .tab.active { background: var(--main); border-color: var(--main); color: #fff; }
+    main .wrap { padding-top: 18px; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    @media (max-width: 780px) {
+      .grid, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .tabs { grid-template-columns: repeat(2, 1fr); }
+      .tab { font-size: 13px; padding: 9px 4px; }
+    }
+    label { display: block; font-size: 13px; color: var(--muted); font-weight: 800; margin-bottom: 5px; }
+    input, select, textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 12px;
+      padding: 11px 12px; font-size: 16px; background: #fff; color: var(--text);
+    }
+    textarea { min-height: 76px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { outline: 3px solid rgba(37, 99, 235, 0.16); border-color: var(--main); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .space { justify-content: space-between; }
+    button {
+      border: 0; border-radius: 12px; padding: 11px 14px;
+      font-size: 15px; font-weight: 800; cursor: pointer;
+      background: var(--main); color: #fff;
+    }
+    button:hover { background: var(--main-dark); }
+    button.secondary { background: var(--soft); color: var(--main-dark); border: 1px solid #c7d7fe; }
+    button.secondary:hover { background: #dbe8ff; }
+    button.ghost { background: #fff; color: var(--text); border: 1px solid var(--line); }
+    button.danger { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
+    button.ok { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .note { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+    .hint { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 14px; padding: 12px; color: #7c2d12; font-size: 14px; }
+    .previous { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; padding: 12px; color: var(--text); margin-top: 10px; }
+    .previous strong { color: var(--main-dark); }
+    .timer-panel { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; align-items: stretch; }
+    @media (max-width: 780px) { .timer-panel { grid-template-columns: 1fr; } }
+    .timer-display {
+      background: linear-gradient(135deg, #eaf1ff, #ffffff);
+      border: 1px solid #c7d7fe;
+      border-radius: 18px;
+      padding: 18px;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .timer-num { font-size: clamp(52px, 12vw, 92px); font-weight: 950; line-height: 1; letter-spacing: -0.04em; color: #0f172a; }
+    .exercise-name { font-size: 24px; font-weight: 950; margin: 4px 0; }
+    .exercise-desc { font-size: 15px; color: #334155; margin: 8px 0 0; }
+    .progress { height: 12px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-top: 12px; }
+    .progress > div { height: 100%; background: var(--main); width: 0%; transition: width 0.2s; }
+    .illustration {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      min-height: 300px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      padding: 12px;
+      cursor: pointer;
+    }
+    .illustration svg { width: min(100%, 330px); height: auto; }
+    .modal {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.72);
+      z-index: 100; display: none; align-items: center; justify-content: center; padding: 18px;
+    }
+    .modal.active { display: flex; }
+    .modal-box { background: #fff; border-radius: 18px; max-width: 720px; width: 100%; padding: 14px; }
+    .modal-body { min-height: 360px; display: grid; place-items: center; }
+    .modal-body svg { width: min(100%, 560px); height: auto; }
+    .check-list { display: grid; gap: 8px; }
+    .check-row {
+      display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+      padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+    }
+    .check-row input { width: 22px; height: 22px; margin-top: 2px; }
+    .small-muted { font-size: 12px; color: var(--muted); }
+    .today-list, .history-list { display: grid; gap: 10px; }
+    .item { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+    .item-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .item-title { font-weight: 950; }
+    .pill { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 900; background: var(--soft); color: var(--main-dark); white-space: nowrap; }
+    .pill.green { background: #dcfce7; color: #166534; }
+    .pill.orange { background: #ffedd5; color: #9a3412; }
+    .pill.gray { background: #f1f5f9; color: #475569; }
+    .muted { color: var(--muted); }
+    .copy-box { width: 100%; min-height: 190px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: #0f172a; color: #fff; border-radius: 999px; padding: 10px 14px; font-weight: 800; font-size: 14px; display: none; z-index: 200; }
+    .toast.active { display: block; }
+    .divider { height: 1px; background: var(--line); margin: 14px 0; }
+    .preset-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .preset-row button { padding: 8px 10px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>運動記録・ストレッチタイマー</h1>
+      <div class="tabs">
+        <button class="tab active" data-tab="stretch">ストレッチ</button>
+        <button class="tab" data-tab="home">家トレ</button>
+        <button class="tab" data-tab="gym">ジム</button>
+        <button class="tab" data-tab="history">履歴・コピー</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <section id="stretch" class="section active">
+        <div class="card">
+          <h2>ストレッチタイマー</h2>
+          <div class="grid-3">
+            <div>
+              <label for="stretchCourse">メニュー</label>
+              <select id="stretchCourse"></select>
+            </div>
+            <div>
+              <label for="stretchSeconds">1種目の秒数</label>
+              <input id="stretchSeconds" type="number" min="5" step="5" value="30" />
+            </div>
+            <div>
+              <label for="stretchAutoSave">完了時の扱い</label>
+              <select id="stretchAutoSave">
+                <option value="auto">最後まで終えたら自動記録</option>
+                <option value="manual">手動で記録</option>
+              </select>
+            </div>
+          </div>
+          <p class="note">朝ストレッチ・夜ストレッチのタイマー機能は残し、完了したメニューをそのまま運動記録に入れます。</p>
+        </div>
+
+        <div class="timer-panel">
+          <div class="timer-display">
+            <div>
+              <div class="row space">
+                <span id="stretchStep" class="pill">1 / 10</span>
+                <span id="stretchStatus" class="pill gray">停止中</span>
+              </div>
+              <div id="stretchTimer" class="timer-num">30</div>
+              <div id="stretchName" class="exercise-name">肩まわし</div>
+              <div id="stretchDesc" class="exercise-desc"></div>
+              <div class="progress"><div id="stretchProgress"></div></div>
+            </div>
+            <div class="row" style="margin-top:16px;">
+              <button id="stretchStart">開始</button>
+              <button id="stretchPause" class="secondary">一時停止</button>
+              <button id="stretchPrev" class="ghost">前へ</button>
+              <button id="stretchNext" class="ghost">次へ</button>
+              <button id="stretchReset" class="danger">リセット</button>
+              <button id="stretchSave" class="ok">記録</button>
+            </div>
+          </div>
+          <div class="illustration" id="stretchIllustration" title="タップで拡大"></div>
+        </div>
+
+        <div class="card">
+          <h3>メニュー一覧</h3>
+          <div id="stretchList" class="check-list"></div>
+        </div>
+      </section>
+
+      <section id="home" class="section">
+        <div class="card">
+          <h2>家での筋トレ</h2>
+          <div class="grid-3">
+            <div>
+              <label for="homeExercise">種目</label>
+              <select id="homeExercise"></select>
+            </div>
+            <div>
+              <label for="homeReps">回数</label>
+              <input id="homeReps" type="number" min="0" step="1" placeholder="例：30" />
+            </div>
+            <div>
+              <label for="homeSeconds">秒数</label>
+              <input id="homeSeconds" type="number" min="0" step="5" placeholder="例：60" />
+            </div>
+          </div>
+          <div class="grid-3" style="margin-top:12px;">
+            <div>
+              <label for="homeSets">セット数</label>
+              <input id="homeSets" type="number" min="1" step="1" value="1" />
+            </div>
+            <div>
+              <label for="homeEffort">余裕度</label>
+              <select id="homeEffort">
+                <option value="">未記録</option>
+                <option value="0">0：限界</option>
+                <option value="1">1：あと1回くらい</option>
+                <option value="2">2：あと2回くらい</option>
+                <option value="3">3：まだ余裕あり</option>
+                <option value="4">4：軽い</option>
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="homeAdd">家トレを記録</button>
+            </div>
+          </div>
+          <div class="preset-row">
+            <button class="secondary" data-home-preset="squat30">スクワット30回</button>
+            <button class="secondary" data-home-preset="plank60">プランク60秒</button>
+            <button class="secondary" data-home-preset="plank120">プランク60秒×2</button>
+            <button class="secondary" data-home-preset="pushup10">腕立て10回</button>
+          </div>
+          <div id="homePrevious" class="previous">種目を選ぶと前回記録を表示します。</div>
+          <label for="homeMemo" style="margin-top:12px;">メモ</label>
+          <textarea id="homeMemo" placeholder="例：腰の違和感なし、フォーム安定"></textarea>
+        </div>
+
+        <div class="card">
+          <h3>家トレメニュー</h3>
+          <div id="homeMenuList" class="check-list"></div>
+        </div>
+      </section>
+
+      <section id="gym" class="section">
+        <div class="card">
+          <h2>ジム記録：筋トレ</h2>
+          <div class="grid-4">
+            <div>
+              <label for="gymExercise">種目</label>
+              <select id="gymExercise"></select>
+            </div>
+            <div>
+              <label for="gymWeight">荷重 kg</label>
+              <input id="gymWeight" type="number" min="0" step="0.5" placeholder="例：70" />
+            </div>
+            <div>
+              <label for="gymReps">回数</label>
+              <input id="gymReps" type="number" min="0" step="1" placeholder="例：15" />
+            </div>
+            <div>
+              <label for="gymSets">セット数</label>
+              <input id="gymSets" type="number" min="1" step="1" value="1" />
+            </div>
+          </div>
+          <div class="grid" style="margin-top:12px;">
+            <div>
+              <label for="gymEffort">余裕度</label>
+              <select id="gymEffort">
+                <option value="">未記録</option>
+                <option value="0">0：限界</option>
+                <option value="1">1：あと1回くらい</option>
+                <option value="2">2：あと2回くらい</option>
+                <option value="3">3：まだ余裕あり</option>
+                <option value="4">4：軽い</option>
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="gymAdd">筋トレを記録</button>
+            </div>
+          </div>
+          <div id="gymPrevious" class="previous">種目を選ぶと前回記録を表示します。</div>
+          <label for="gymMemo" style="margin-top:12px;">メモ</label>
+          <textarea id="gymMemo" placeholder="例：フォーム安定、膝の違和感なし"></textarea>
+        </div>
+
+        <div class="card">
+          <h2>ジム記録：ウォーキング</h2>
+          <div class="grid-4">
+            <div>
+              <label for="walkSpeed">スピード km/h</label>
+              <input id="walkSpeed" type="number" min="0" step="0.1" placeholder="例：6.0" />
+            </div>
+            <div>
+              <label for="walkMinutes">時間 分</label>
+              <input id="walkMinutes" type="number" min="0" step="1" placeholder="例：30" />
+            </div>
+            <div>
+              <label for="walkIncline">傾斜 %</label>
+              <input id="walkIncline" type="number" min="0" step="0.5" placeholder="例：3" />
+            </div>
+            <div>
+              <label>距離</label>
+              <input id="walkDistance" type="text" readonly placeholder="自動計算" />
+            </div>
+          </div>
+          <div class="grid" style="margin-top:12px;">
+            <div>
+              <label for="walkEffort">余裕度</label>
+              <select id="walkEffort">
+                <option value="">未記録</option>
+                <option value="0">0：かなりきつい</option>
+                <option value="1">1：きつい</option>
+                <option value="2">2：普通</option>
+                <option value="3">3：余裕あり</option>
+                <option value="4">4：かなり軽い</option>
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="walkAdd">ウォーキングを記録</button>
+            </div>
+          </div>
+          <div id="walkPrevious" class="previous">前回のウォーキング記録を表示します。</div>
+          <label for="walkMemo" style="margin-top:12px;">メモ</label>
+          <textarea id="walkMemo" placeholder="例：ジム後でも消耗少なめ"></textarea>
+        </div>
+      </section>
+
+      <section id="history" class="section">
+        <div class="card">
+          <h2>今日の記録コピー</h2>
+          <textarea id="copyText" class="copy-box" readonly></textarea>
+          <div class="row" style="margin-top:10px;">
+            <button id="copyToday">コピー</button>
+            <button id="refreshCopy" class="secondary">再表示</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>今日の記録</h2>
+          <div id="todayList" class="today-list"></div>
+        </div>
+
+        <div class="card">
+          <h2>履歴</h2>
+          <div class="grid-3">
+            <div>
+              <label for="filterType">種類</label>
+              <select id="filterType">
+                <option value="all">すべて</option>
+                <option value="stretch">ストレッチ</option>
+                <option value="home">家トレ</option>
+                <option value="gym">ジム筋トレ</option>
+                <option value="walking">ウォーキング</option>
+              </select>
+            </div>
+            <div>
+              <label for="filterText">検索</label>
+              <input id="filterText" type="text" placeholder="種目名・メモ" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="exportCsv" class="secondary">CSV出力</button>
+            </div>
+          </div>
+          <div id="historyList" class="history-list" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card">
+          <h2>バックアップ・管理</h2>
+          <div class="row">
+            <button id="exportJson" class="secondary">JSONバックアップ</button>
+            <label class="ghost" style="display:inline-flex; align-items:center; gap:8px; margin:0; border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; cursor:pointer; color:var(--text);">
+              JSON復元
+              <input id="importJson" type="file" accept="application/json" style="display:none;" />
+            </label>
+            <button id="clearToday" class="danger">今日の記録を削除</button>
+          </div>
+          <p class="note">記録はこの端末のブラウザ内に保存されます。機種変更やブラウザ変更前はJSONバックアップを使ってください。</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="imageModal" class="modal">
+    <div class="modal-box">
+      <div class="row space" style="margin-bottom:8px;">
+        <strong id="modalTitle">動き</strong>
+        <button id="closeModal" class="ghost">閉じる</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const STORAGE_KEY = "mk_health_records_v3";
+    const OLD_GYM_KEY = "mk_gym_records_v2";
+
+    const stretchMenus = {
+      "朝ストレッチ": [
+        { name: "肩まわし", desc: "立ったまま両肩を大きく回す。前回し・後ろ回しで肩甲骨も動かす。", pose: "shoulder" },
+        { name: "肩甲骨寄せ・開き", desc: "両手を前に伸ばして背中を丸め、次に肘を後ろへ引いて胸を開く。", pose: "scapula" },
+        { name: "体側伸ばし：右", desc: "右手を上げ、体を左側へ倒して右の脇腹を軽く伸ばす。", pose: "sideR" },
+        { name: "体側伸ばし：左", desc: "左手を上げ、体を右側へ倒して左の脇腹を軽く伸ばす。", pose: "sideL" },
+        { name: "股関節前側：右脚後ろ", desc: "右脚を後ろにして片膝立ち。骨盤を立てたまま体を少し前へ出す。", pose: "hipR" },
+        { name: "股関節前側：左脚後ろ", desc: "左脚を後ろにして片膝立ち。腰を反らさず股関節の前側を伸ばす。", pose: "hipL" },
+        { name: "お尻ストレッチ：右", desc: "右のお尻を伸ばす。反動をつけず、呼吸を止めない。", pose: "gluteR" },
+        { name: "お尻ストレッチ：左", desc: "左のお尻を伸ばす。腰に痛みが出ない範囲で行う。", pose: "gluteL" },
+        { name: "もも裏・ふくらはぎ：右", desc: "右脚を伸ばし、もも裏からふくらはぎを軽く伸ばす。", pose: "hamR" },
+        { name: "もも裏・ふくらはぎ：左", desc: "左脚を伸ばし、背中を丸めすぎずに伸ばす。", pose: "hamL" }
+      ],
+      "夜ストレッチ": [
+        { name: "肩まわし", desc: "肩と肩甲骨を大きくゆっくり回す。", pose: "shoulder" },
+        { name: "肩甲骨寄せ・開き", desc: "背中を丸める動きと胸を開く動きを交互に行う。", pose: "scapula" },
+        { name: "胸を開く：右", desc: "右胸から肩前側を伸ばす。肩をすくめない。", pose: "chestR" },
+        { name: "胸を開く：左", desc: "左胸から肩前側を伸ばす。呼吸をゆっくり続ける。", pose: "chestL" },
+        { name: "体側伸ばし：右", desc: "右脇腹を伸ばす。腰を反らしすぎない。", pose: "sideR" },
+        { name: "体側伸ばし：左", desc: "左脇腹を伸ばす。体を横に長くする意識。", pose: "sideL" },
+        { name: "股関節前側：右脚後ろ", desc: "右脚を後ろにして股関節前側を伸ばす。", pose: "hipR" },
+        { name: "股関節前側：左脚後ろ", desc: "左脚を後ろにして股関節前側を伸ばす。", pose: "hipL" },
+        { name: "お尻ストレッチ：右", desc: "右のお尻を伸ばす。痛みではなく伸び感で止める。", pose: "gluteR" },
+        { name: "お尻ストレッチ：左", desc: "左のお尻を伸ばす。骨盤を安定させる。", pose: "gluteL" },
+        { name: "もも裏・ふくらはぎ：右", desc: "右脚の後ろ側を伸ばす。膝は無理に伸ばし切らない。", pose: "hamR" },
+        { name: "もも裏・ふくらはぎ：左", desc: "左脚の後ろ側を伸ばす。呼吸に合わせて少しずつ。", pose: "hamL" },
+        { name: "四つ這い背中ほぐし", desc: "四つ這いで背中を丸める・反らす。首は力を抜く。", pose: "cat" },
+        { name: "胸椎回旋：右", desc: "四つ這いまたは横向きで胸を右へ開く。腰ではなく胸を回す。", pose: "rotateR" },
+        { name: "胸椎回旋：左", desc: "胸を左へ開く。肩甲骨周りをゆっくり動かす。", pose: "rotateL" }
+      ]
+    };
+
+    const homeExercises = [
+      { name: "スクワット", desc: "足裏全体で押す。膝とつま先の向きをそろえる。" },
+      { name: "プランク", desc: "腰を反りすぎず、落としすぎず、頭からかかとまで一直線。" },
+      { name: "腕立て伏せ", desc: "胸を床へ近づける。肩をすくめず体幹を固める。" },
+      { name: "ニーレイズ", desc: "腰を反らさず、膝を引き上げて腹筋を使う。" },
+      { name: "レッグレイズ", desc: "腰に負担が出る場合は膝を曲げる。反動を使わない。" },
+      { name: "ヒップリフト", desc: "お尻を締めて骨盤を持ち上げる。腰を反りすぎない。" },
+      { name: "カーフレイズ", desc: "かかとを上げ下げする。ふくらはぎをゆっくり使う。" },
+      { name: "バードドッグ", desc: "対角の手足を伸ばす。骨盤を左右に揺らさない。" },
+      { name: "サイドプランク", desc: "横向きで体を一直線に保つ。肩の真下に肘を置く。" }
+    ];
+
+    const gymExercises = [
+      "チェストプレス", "レッグプレス", "ラットプルダウン", "レッグエクステンション", "レッグカール",
+      "ヒップアブダクション", "ショルダープレス", "アブドミナル", "ローイング", "腹筋ベンチ"
+    ];
+
+    let records = [];
+    let stretchIndex = 0;
+    let remaining = 30;
+    let timerId = null;
+    let running = false;
+
+    const $ = (id) => document.getElementById(id);
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function nowIso() { return new Date().toISOString(); }
+    function localDateString(d = new Date()) {
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+    function localDateTime(d = new Date()) {
+      return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    function formatDateTime(iso) { return localDateTime(new Date(iso)); }
+    function todayKey() { return localDateString(); }
+
+    function showToast(msg) {
+      const t = $("toast");
+      t.textContent = msg;
+      t.classList.add("active");
+      setTimeout(() => t.classList.remove("active"), 1600);
+    }
+
+    function loadRecords() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        records = raw ? JSON.parse(raw) : [];
+      } catch (e) { records = []; }
+      migrateOldGymRecords();
+    }
+
+    function saveRecords() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      renderAll();
+    }
+
+    function migrateOldGymRecords() {
+      if (records.length) return;
+      try {
+        const raw = localStorage.getItem(OLD_GYM_KEY);
+        if (!raw) return;
+        const old = JSON.parse(raw);
+        if (!Array.isArray(old) || !old.length) return;
+        records = old.map(r => {
+          if (r.type === "walking") {
+            return { id: crypto.randomUUID(), type: "walking", createdAt: r.createdAt || nowIso(), speed: r.speed, minutes: r.minutes, incline: r.incline, distance: r.distance, effort: r.effort || "", memo: r.memo || "" };
+          }
+          return { id: crypto.randomUUID(), type: "gym", createdAt: r.createdAt || nowIso(), exercise: r.exercise, weight: r.weight, reps: r.reps, sets: r.sets, effort: r.effort || "", memo: r.memo || "" };
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      } catch (e) {}
+    }
+
+    function initTabs() {
+      document.querySelectorAll(".tab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+          btn.classList.add("active");
+          $(btn.dataset.tab).classList.add("active");
+          renderAll();
+        });
+      });
+    }
+
+    function initSelects() {
+      $("stretchCourse").innerHTML = Object.keys(stretchMenus).map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+      $("homeExercise").innerHTML = homeExercises.map(x => `<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join("");
+      $("gymExercise").innerHTML = gymExercises.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+      $("stretchCourse").addEventListener("change", resetStretch);
+      $("stretchSeconds").addEventListener("change", resetStretch);
+      $("homeExercise").addEventListener("change", renderHomePrevious);
+      $("gymExercise").addEventListener("change", renderGymPrevious);
+      ["walkSpeed", "walkMinutes", "walkIncline"].forEach(id => $(id).addEventListener("input", updateWalkDistance));
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
+    }
+
+    function currentStretchItems() { return stretchMenus[$("stretchCourse").value] || []; }
+    function currentStretchItem() { return currentStretchItems()[stretchIndex] || currentStretchItems()[0]; }
+
+    function resetStretch() {
+      stopTimer();
+      stretchIndex = 0;
+      remaining = Number($("stretchSeconds").value) || 30;
+      renderStretch();
+    }
+
+    function stopTimer() {
+      if (timerId) clearInterval(timerId);
+      timerId = null;
+      running = false;
+    }
+
+    function startTimer() {
+      if (running) return;
+      running = true;
+      $("stretchStatus").textContent = "実行中";
+      timerId = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          goNextStretch(true);
+        } else {
+          renderStretch();
+        }
+      }, 1000);
+      renderStretch();
+    }
+
+    function pauseTimer() {
+      stopTimer();
+      renderStretch();
+    }
+
+    function goNextStretch(fromTimer = false) {
+      const items = currentStretchItems();
+      if (stretchIndex >= items.length - 1) {
+        stopTimer();
+        remaining = 0;
+        renderStretch();
+        if ($("stretchAutoSave").value === "auto" || fromTimer) saveStretchRecord();
+        return;
+      }
+      stretchIndex += 1;
+      remaining = Number($("stretchSeconds").value) || 30;
+      renderStretch();
+    }
+
+    function goPrevStretch() {
+      stretchIndex = Math.max(0, stretchIndex - 1);
+      remaining = Number($("stretchSeconds").value) || 30;
+      renderStretch();
+    }
+
+    function renderStretch() {
+      const items = currentStretchItems();
+      if (!items.length) return;
+      const item = currentStretchItem();
+      const total = Number($("stretchSeconds").value) || 30;
+      $("stretchStep").textContent = `${stretchIndex + 1} / ${items.length}`;
+      $("stretchStatus").textContent = running ? "実行中" : (remaining === 0 ? "完了" : "停止中");
+      $("stretchTimer").textContent = remaining;
+      $("stretchName").textContent = item.name;
+      $("stretchDesc").textContent = item.desc;
+      $("stretchProgress").style.width = `${Math.max(0, Math.min(100, ((total - remaining) / total) * 100))}%`;
+      const svg = makePoseSvg(item.pose, item.name);
+      $("stretchIllustration").innerHTML = svg;
+      renderStretchList();
+    }
+
+    function renderStretchList() {
+      const items = currentStretchItems();
+      $("stretchList").innerHTML = items.map((x, i) => `
+        <div class="check-row" style="${i === stretchIndex ? 'border-color:#93c5fd;background:#eff6ff;' : ''}">
+          <input type="checkbox" ${i < stretchIndex || remaining === 0 ? 'checked' : ''} disabled />
+          <div><strong>${escapeHtml(x.name)}</strong><div class="small-muted">${escapeHtml(x.desc)}</div></div>
+        </div>
+      `).join("");
+    }
+
+    function saveStretchRecord() {
+      const course = $("stretchCourse").value;
+      const items = currentStretchItems().map(x => x.name);
+      const last = records[0];
+      const recentDuplicate = last && last.type === "stretch" && last.course === course && (Date.now() - new Date(last.createdAt).getTime()) < 60000;
+      if (recentDuplicate) return;
+      records.unshift({ id: crypto.randomUUID(), type: "stretch", createdAt: nowIso(), course, seconds: Number($("stretchSeconds").value) || 30, items, memo: "" });
+      saveRecords();
+      showToast("ストレッチを記録しました");
+    }
+
+    function makePoseSvg(pose, title) {
+      const label = escapeHtml(title);
+      const baseStart = `<svg viewBox="0 0 320 260" role="img" aria-label="${label}" xmlns="http://www.w3.org/2000/svg">
+        <rect x="8" y="8" width="304" height="244" rx="22" fill="#f8fafc" stroke="#dbe3ee"/>
+        <text x="160" y="32" text-anchor="middle" font-size="16" font-weight="800" fill="#172033">${label}</text>`;
+      const baseEnd = `<text x="160" y="236" text-anchor="middle" font-size="12" fill="#64748b">動きの確認用イメージ</text></svg>`;
+      const head = `<circle cx="160" cy="75" r="18" fill="#fde68a" stroke="#92400e" stroke-width="3"/>`;
+      const body = `<line x1="160" y1="94" x2="160" y2="150" stroke="#334155" stroke-width="10" stroke-linecap="round"/>`;
+      const legs = `<line x1="160" y1="150" x2="128" y2="205" stroke="#334155" stroke-width="10" stroke-linecap="round"/><line x1="160" y1="150" x2="192" y2="205" stroke="#334155" stroke-width="10" stroke-linecap="round"/>`;
+      let arms = `<line x1="158" y1="105" x2="110" y2="122" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/><line x1="162" y1="105" x2="210" y2="122" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/>`;
+      let extra = "";
+      if (pose.includes("sideR")) { arms = `<line x1="160" y1="105" x2="128" y2="70" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/><line x1="160" y1="105" x2="198" y2="70" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/>`; extra = `<path d="M160 96 C145 120 142 146 150 174" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 6"/>`; }
+      else if (pose.includes("sideL")) { arms = `<line x1="160" y1="105" x2="122" y2="70" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/><line x1="160" y1="105" x2="192" y2="70" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/>`; extra = `<path d="M160 96 C176 120 178 146 170 174" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 6"/>`; }
+      else if (pose.includes("hip") || pose.includes("glute") || pose.includes("ham")) { return `${baseStart}<ellipse cx="160" cy="215" rx="105" ry="10" fill="#e2e8f0"/><circle cx="118" cy="96" r="16" fill="#fde68a" stroke="#92400e" stroke-width="3"/><line x1="130" y1="108" x2="168" y2="145" stroke="#334155" stroke-width="10" stroke-linecap="round"/><line x1="168" y1="145" x2="218" y2="147" stroke="#334155" stroke-width="10" stroke-linecap="round"/><line x1="168" y1="145" x2="132" y2="198" stroke="#334155" stroke-width="10" stroke-linecap="round"/><line x1="142" y1="122" x2="104" y2="158" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/><path d="M188 122 C198 142 198 160 188 182" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 6"/>${baseEnd}`; }
+      else if (pose.includes("cat")) { return `${baseStart}<ellipse cx="160" cy="215" rx="105" ry="10" fill="#e2e8f0"/><circle cx="92" cy="110" r="15" fill="#fde68a" stroke="#92400e" stroke-width="3"/><path d="M110 128 C145 96 185 96 220 128" fill="none" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="122" y1="134" x2="104" y2="188" stroke="#334155" stroke-width="9" stroke-linecap="round"/><line x1="206" y1="134" x2="224" y2="188" stroke="#334155" stroke-width="9" stroke-linecap="round"/><path d="M124 116 C156 84 190 84 218 116" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 6"/>${baseEnd}`; }
+      else if (pose.includes("rotate")) { return `${baseStart}<ellipse cx="160" cy="215" rx="105" ry="10" fill="#e2e8f0"/><circle cx="130" cy="100" r="16" fill="#fde68a" stroke="#92400e" stroke-width="3"/><line x1="142" y1="115" x2="180" y2="150" stroke="#334155" stroke-width="10" stroke-linecap="round"/><line x1="180" y1="150" x2="220" y2="190" stroke="#334155" stroke-width="9" stroke-linecap="round"/><line x1="160" y1="134" x2="100" y2="156" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/><line x1="160" y1="134" x2="220" y2="96" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/><path d="M160 98 C202 96 226 116 236 150" fill="none" stroke="#ef4444" stroke-width="4" marker-end="url(#arrow)"/><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#ef4444"/></marker></defs>${baseEnd}`; }
+      else if (pose.includes("chest")) { arms = `<line x1="158" y1="105" x2="96" y2="92" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/><line x1="162" y1="105" x2="224" y2="92" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/>`; extra = `<path d="M118 88 C135 80 145 80 160 91 C176 80 190 80 206 88" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 6"/>`; }
+      else if (pose.includes("scapula")) { arms = `<line x1="158" y1="105" x2="106" y2="105" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/><line x1="162" y1="105" x2="214" y2="105" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/>`; extra = `<path d="M136 112 C150 124 170 124 184 112" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 6"/>`; }
+      else { extra = `<path d="M116 106 C96 84 96 60 120 48" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 6"/><path d="M204 106 C224 84 224 60 200 48" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6 6"/>`; }
+      return `${baseStart}${head}${body}${arms}${legs}${extra}${baseEnd}`;
+    }
+
+    function renderHomeMenu() {
+      $("homeMenuList").innerHTML = homeExercises.map(x => `
+        <div class="check-row">
+          <input type="checkbox" disabled />
+          <div><strong>${escapeHtml(x.name)}</strong><div class="small-muted">${escapeHtml(x.desc)}</div></div>
+        </div>
+      `).join("");
+    }
+
+    function renderHomePrevious() {
+      const name = $("homeExercise").value;
+      const prev = records.find(r => r.type === "home" && r.exercise === name);
+      $("homePrevious").innerHTML = prev ? previousHomeHtml(prev) : "この種目の前回記録はまだありません。";
+    }
+    function previousHomeHtml(r) {
+      return `<strong>前回：</strong>${formatDateTime(r.createdAt)}<br>${escapeHtml(r.exercise)}：${r.reps ? escapeHtml(r.reps) + '回 ' : ''}${r.seconds ? escapeHtml(r.seconds) + '秒 ' : ''}${r.sets ? '× ' + escapeHtml(r.sets) + 'セット' : ''}${r.effort !== "" ? '<br>余裕度：' + escapeHtml(r.effort) : ''}${r.memo ? '<br>メモ：' + escapeHtml(r.memo) : ''}`;
+    }
+
+    function addHomeRecord() {
+      const exercise = $("homeExercise").value;
+      const reps = $("homeReps").value;
+      const seconds = $("homeSeconds").value;
+      if (!reps && !seconds) { showToast("回数または秒数を入力してください"); return; }
+      records.unshift({ id: crypto.randomUUID(), type: "home", createdAt: nowIso(), exercise, reps, seconds, sets: $("homeSets").value || "1", effort: $("homeEffort").value, memo: $("homeMemo").value.trim() });
+      $("homeReps").value = ""; $("homeSeconds").value = ""; $("homeSets").value = "1"; $("homeEffort").value = ""; $("homeMemo").value = "";
+      saveRecords(); showToast("家トレを記録しました");
+    }
+
+    function applyHomePreset(kind) {
+      if (kind === "squat30") { $("homeExercise").value = "スクワット"; $("homeReps").value = 30; $("homeSeconds").value = ""; $("homeSets").value = 1; }
+      if (kind === "plank60") { $("homeExercise").value = "プランク"; $("homeReps").value = ""; $("homeSeconds").value = 60; $("homeSets").value = 1; }
+      if (kind === "plank120") { $("homeExercise").value = "プランク"; $("homeReps").value = ""; $("homeSeconds").value = 60; $("homeSets").value = 2; }
+      if (kind === "pushup10") { $("homeExercise").value = "腕立て伏せ"; $("homeReps").value = 10; $("homeSeconds").value = ""; $("homeSets").value = 1; }
+      renderHomePrevious();
+    }
+
+    function renderGymPrevious() {
+      const name = $("gymExercise").value;
+      const prev = records.find(r => r.type === "gym" && r.exercise === name);
+      $("gymPrevious").innerHTML = prev ? previousGymHtml(prev) : "この種目の前回記録はまだありません。";
+    }
+    function previousGymHtml(r) {
+      return `<strong>前回：</strong>${formatDateTime(r.createdAt)}<br>${escapeHtml(r.exercise)}：${escapeHtml(r.weight)}kg × ${escapeHtml(r.reps)}回 × ${escapeHtml(r.sets)}セット${r.effort !== "" ? '<br>余裕度：' + escapeHtml(r.effort) : ''}${r.memo ? '<br>メモ：' + escapeHtml(r.memo) : ''}`;
+    }
+
+    function addGymRecord() {
+      const exercise = $("gymExercise").value;
+      const weight = $("gymWeight").value;
+      const reps = $("gymReps").value;
+      const sets = $("gymSets").value || "1";
+      if (!weight || !reps) { showToast("荷重と回数を入力してください"); return; }
+      records.unshift({ id: crypto.randomUUID(), type: "gym", createdAt: nowIso(), exercise, weight, reps, sets, effort: $("gymEffort").value, memo: $("gymMemo").value.trim() });
+      $("gymWeight").value = ""; $("gymReps").value = ""; $("gymSets").value = "1"; $("gymEffort").value = ""; $("gymMemo").value = "";
+      saveRecords(); showToast("ジム筋トレを記録しました");
+    }
+
+    function updateWalkDistance() {
+      const speed = Number($("walkSpeed").value || 0);
+      const min = Number($("walkMinutes").value || 0);
+      const dist = speed * min / 60;
+      $("walkDistance").value = speed && min ? `${dist.toFixed(2)} km` : "";
+    }
+
+    function renderWalkPrevious() {
+      const prev = records.find(r => r.type === "walking");
+      $("walkPrevious").innerHTML = prev ? `<strong>前回：</strong>${formatDateTime(prev.createdAt)}<br>${escapeHtml(prev.speed)}km/h × ${escapeHtml(prev.minutes)}分、傾斜${escapeHtml(prev.incline)}%、距離${escapeHtml(prev.distance)}km${prev.effort !== "" ? '<br>余裕度：' + escapeHtml(prev.effort) : ''}${prev.memo ? '<br>メモ：' + escapeHtml(prev.memo) : ''}` : "ウォーキングの前回記録はまだありません。";
+    }
+
+    function addWalkRecord() {
+      const speed = $("walkSpeed").value;
+      const minutes = $("walkMinutes").value;
+      const incline = $("walkIncline").value || "0";
+      if (!speed || !minutes) { showToast("スピードと時間を入力してください"); return; }
+      const distance = (Number(speed) * Number(minutes) / 60).toFixed(2);
+      records.unshift({ id: crypto.randomUUID(), type: "walking", createdAt: nowIso(), speed, minutes, incline, distance, effort: $("walkEffort").value, memo: $("walkMemo").value.trim() });
+      $("walkSpeed").value = ""; $("walkMinutes").value = ""; $("walkIncline").value = ""; $("walkDistance").value = ""; $("walkEffort").value = ""; $("walkMemo").value = "";
+      saveRecords(); showToast("ウォーキングを記録しました");
+    }
+
+    function typeLabel(type) {
+      return { stretch: "ストレッチ", home: "家トレ", gym: "ジム筋トレ", walking: "ウォーキング" }[type] || type;
+    }
+    function typeClass(type) {
+      return type === "stretch" ? "green" : type === "walking" ? "orange" : "";
+    }
+    function recordTitle(r) {
+      if (r.type === "stretch") return r.course;
+      if (r.type === "walking") return `ウォーキング ${r.speed}km/h ${r.minutes}分`;
+      return r.exercise;
+    }
+    function recordDetail(r) {
+      if (r.type === "stretch") return `${r.items.length}種目 / ${r.seconds}秒ずつ`;
+      if (r.type === "home") return `${r.reps ? r.reps + '回 ' : ''}${r.seconds ? r.seconds + '秒 ' : ''}${r.sets ? '× ' + r.sets + 'セット' : ''}${r.effort !== "" ? ' / 余裕度' + r.effort : ''}${r.memo ? ' / ' + r.memo : ''}`;
+      if (r.type === "gym") return `${r.weight}kg × ${r.reps}回 × ${r.sets}セット${r.effort !== "" ? ' / 余裕度' + r.effort : ''}${r.memo ? ' / ' + r.memo : ''}`;
+      if (r.type === "walking") return `傾斜${r.incline}% / 距離${r.distance}km${r.effort !== "" ? ' / 余裕度' + r.effort : ''}${r.memo ? ' / ' + r.memo : ''}`;
+      return "";
+    }
+    function renderRecordItem(r) {
+      return `<div class="item">
+        <div class="item-head">
+          <div><div class="item-title">${escapeHtml(recordTitle(r))}</div><div class="muted">${escapeHtml(formatDateTime(r.createdAt))}</div></div>
+          <span class="pill ${typeClass(r.type)}">${typeLabel(r.type)}</span>
+        </div>
+        <div style="margin-top:8px;">${escapeHtml(recordDetail(r))}</div>
+        <div class="row" style="margin-top:8px;"><button class="danger" onclick="deleteRecord('${r.id}')">削除</button></div>
+      </div>`;
+    }
+    window.deleteRecord = function(id) {
+      records = records.filter(r => r.id !== id);
+      saveRecords(); showToast("削除しました");
+    };
+
+    function renderTodayList() {
+      const list = records.filter(r => localDateString(new Date(r.createdAt)) === todayKey());
+      $("todayList").innerHTML = list.length ? list.map(renderRecordItem).join("") : `<div class="hint">今日の記録はまだありません。</div>`;
+    }
+
+    function renderHistory() {
+      const type = $("filterType").value;
+      const q = $("filterText").value.trim().toLowerCase();
+      let list = records.slice();
+      if (type !== "all") list = list.filter(r => r.type === type);
+      if (q) list = list.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+      $("historyList").innerHTML = list.length ? list.slice(0, 200).map(renderRecordItem).join("") : `<div class="hint">該当する履歴はありません。</div>`;
+    }
+
+    function buildCopyText() {
+      const list = records.filter(r => localDateString(new Date(r.createdAt)) === todayKey()).slice().reverse();
+      const lines = [`今日の運動記録：${localDateTime()}`, ""];
+      const stretch = list.filter(r => r.type === "stretch");
+      const home = list.filter(r => r.type === "home");
+      const gym = list.filter(r => r.type === "gym");
+      const walk = list.filter(r => r.type === "walking");
+      stretch.forEach(r => {
+        lines.push(`【${r.course}】`);
+        r.items.forEach(name => lines.push(`- ${name}`));
+        lines.push("");
+      });
+      if (home.length) {
+        lines.push("【家での筋トレ】");
+        home.forEach(r => lines.push(`- ${r.exercise}：${r.reps ? r.reps + '回 ' : ''}${r.seconds ? r.seconds + '秒 ' : ''}${r.sets ? '× ' + r.sets + 'セット' : ''}${r.effort !== "" ? '／余裕度' + r.effort : ''}${r.memo ? '／' + r.memo : ''}`));
+        lines.push("");
+      }
+      if (gym.length) {
+        lines.push("【ジム筋トレ】");
+        gym.forEach(r => lines.push(`- ${r.exercise}：${r.weight}kg × ${r.reps}回 × ${r.sets}セット${r.effort !== "" ? '／余裕度' + r.effort : ''}${r.memo ? '／' + r.memo : ''}`));
+        lines.push("");
+      }
+      if (walk.length) {
+        lines.push("【ウォーキング】");
+        walk.forEach(r => lines.push(`- ${r.speed}km/h、${r.minutes}分、傾斜${r.incline}%、距離${r.distance}km${r.effort !== "" ? '／余裕度' + r.effort : ''}${r.memo ? '／' + r.memo : ''}`));
+        lines.push("");
+      }
+      lines.push("コメント：");
+      lines.push("食事・体調・ゴルフ予定に合わせて、次回の調整をお願いします。");
+      return lines.join("\n").trim();
+    }
+
+    function renderCopy() { $("copyText").value = buildCopyText(); }
+
+    async function copyToday() {
+      const text = buildCopyText();
+      $("copyText").value = text;
+      try { await navigator.clipboard.writeText(text); showToast("コピーしました"); }
+      catch (e) { $("copyText").select(); document.execCommand("copy"); showToast("コピーしました"); }
+    }
+
+    function exportCsv() {
+      const header = ["createdAt","type","title","detail","exercise","weight","reps","seconds","sets","effort","speed","minutes","incline","distance","memo"];
+      const rows = records.map(r => header.map(k => {
+        let v = "";
+        if (k === "title") v = recordTitle(r);
+        else if (k === "detail") v = recordDetail(r);
+        else v = r[k] ?? "";
+        return `"${String(v).replace(/"/g, '""')}"`;
+      }).join(","));
+      downloadText([header.join(","), ...rows].join("\n"), `exercise_records_${todayKey()}.csv`, "text/csv");
+    }
+
+    function exportJson() { downloadText(JSON.stringify(records, null, 2), `exercise_records_${todayKey()}.json`, "application/json"); }
+    function downloadText(text, filename, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJsonFile(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!Array.isArray(data)) throw new Error("not array");
+          const existingIds = new Set(records.map(r => r.id));
+          const cleaned = data.map(r => ({ ...r, id: r.id || crypto.randomUUID() })).filter(r => r.createdAt && r.type);
+          cleaned.forEach(r => { if (!existingIds.has(r.id)) records.push(r); });
+          records.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+          saveRecords(); showToast("復元しました");
+        } catch (e) { showToast("JSONを読み込めませんでした"); }
+      };
+      reader.readAsText(file);
+    }
+
+    function clearToday() {
+      if (!confirm("今日の記録を削除しますか？")) return;
+      records = records.filter(r => localDateString(new Date(r.createdAt)) !== todayKey());
+      saveRecords(); showToast("今日の記録を削除しました");
+    }
+
+    function renderAll() {
+      renderStretch();
+      renderHomeMenu();
+      renderHomePrevious();
+      renderGymPrevious();
+      renderWalkPrevious();
+      renderTodayList();
+      renderHistory();
+      renderCopy();
+    }
+
+    function initEvents() {
+      $("stretchStart").addEventListener("click", startTimer);
+      $("stretchPause").addEventListener("click", pauseTimer);
+      $("stretchPrev").addEventListener("click", goPrevStretch);
+      $("stretchNext").addEventListener("click", () => goNextStretch(false));
+      $("stretchReset").addEventListener("click", resetStretch);
+      $("stretchSave").addEventListener("click", saveStretchRecord);
+      $("stretchIllustration").addEventListener("click", () => {
+        const item = currentStretchItem();
+        $("modalTitle").textContent = item.name;
+        $("modalBody").innerHTML = makePoseSvg(item.pose, item.name);
+        $("imageModal").classList.add("active");
+      });
+      $("closeModal").addEventListener("click", () => $("imageModal").classList.remove("active"));
+      $("imageModal").addEventListener("click", (e) => { if (e.target.id === "imageModal") $("imageModal").classList.remove("active"); });
+      $("homeAdd").addEventListener("click", addHomeRecord);
+      document.querySelectorAll("[data-home-preset]").forEach(b => b.addEventListener("click", () => applyHomePreset(b.dataset.homePreset)));
+      $("gymAdd").addEventListener("click", addGymRecord);
+      $("walkAdd").addEventListener("click", addWalkRecord);
+      $("copyToday").addEventListener("click", copyToday);
+      $("refreshCopy").addEventListener("click", renderCopy);
+      $("filterType").addEventListener("change", renderHistory);
+      $("filterText").addEventListener("input", renderHistory);
+      $("exportCsv").addEventListener("click", exportCsv);
+      $("exportJson").addEventListener("click", exportJson);
+      $("importJson").addEventListener("change", e => { if (e.target.files[0]) importJsonFile(e.target.files[0]); e.target.value = ""; });
+      $("clearToday").addEventListener("click", clearToday);
+    }
+
+    loadRecords();
+    initTabs();
+    initSelects();
+    initEvents();
+    resetStretch();
+    renderAll();
+  </script>
+</body>
+</html>
